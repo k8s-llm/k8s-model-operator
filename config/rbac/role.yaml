@@ -1,11 +1,32 @@
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  labels:
-    app.kubernetes.io/name: k8s-model-operator
-    app.kubernetes.io/managed-by: kustomize
   name: manager-role
 rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+- apiGroups:
+  - llmmodel.host-llm.io
+  resources:
+  - models
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - llmmodel.host-llm.io
+  resources:
+  - models/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - llmmodel.host-llm.io
+  resources:
+  - models/status
+  verbs:
+  - get
+  - patch
+  - update

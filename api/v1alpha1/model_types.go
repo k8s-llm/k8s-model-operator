@@ -31,9 +31,56 @@ type ModelSpec struct {
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
 
-	// foo is an example field of Model. Edit model_types.go to remove/update
+	// provider specifies what provider will implement inference engine for the model.
+	// Valid values are:
+	// - "Ollama" (default): implements Ollama as model manager;
+	// - "LlamaCpp": implements LlamaCpp as model manager;
+	// - "LlamaFile": implements LlamaFile as model manager.
 	// +optional
-	Foo *string `json:"foo,omitempty"`
+	// +kubebuilder:default:=Ollama
+	Provider Provider `json:"provider"`
+
+	// model is the LLM model to be accessed by this inference deployment
+	// +required
+	LLMModel string `json:"model"`
+
+	// minReplicas specify the minimum amount of replicas for a Model deployment. Defaults to 1.
+	// +optional
+	// +kubebuilder:default:=1
+	MinReplicas int32 `json:"minReplicas"`
+
+	// maxReplicas specify the max amount of replicas for a Model deployment. Defaults to 1.
+	// +optional
+	// +kubebuilder:default:=1
+	MaxReplicas int32 `json:"maxReplicas"`
+}
+
+// Provider describes what LLM model manager or provider will be handled by the LLM Model.
+// Only one of the following providers may be specified.
+// If none of the following models is specified, the default one
+// is Ollama.
+// +kubebuilder:validation:Enum=Allow;Forbid;Replace
+type Provider string
+
+const (
+	// OllamaManager implements Ollama.
+	OllamaProvider Provider = "Ollama"
+
+	// LlammaCPPManager implements Llama.cpp
+	LlamaCPPMProvider Provider = "LlamaCpp"
+
+	// LlamaFileProvider implements Mozilla's llamafile provider
+	LlamaFileProvider Provider = "LlamaFile"
+)
+
+// Model defines the name and version of the model to be used.
+// Valid definition should be like:
+// name: qwen3
+// version: 0.6b
+// +kubebuilder:required
+type LLMModel struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
 // ModelStatus defines the observed state of Model.
