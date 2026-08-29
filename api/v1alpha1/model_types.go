@@ -66,8 +66,8 @@ const (
 	// OllamaManager implements Ollama.
 	OllamaProvider Provider = "Ollama"
 
-	// LlammaCPPManager implements Llama.cpp
-	LlamaCPPMProvider Provider = "LlamaCpp"
+	// LlammaCPPProvider implements Llama.cpp
+	LlamaCPPProvider Provider = "LlamaCpp"
 
 	// LlamaFileProvider implements Mozilla's llamafile provider
 	LlamaFileProvider Provider = "LlamaFile"
