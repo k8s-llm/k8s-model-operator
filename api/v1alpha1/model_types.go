@@ -42,7 +42,7 @@ type ModelSpec struct {
 
 	// model is the LLM model to be accessed by this inference deployment
 	// +required
-	LLMModel string `json:"model"`
+	LLMModel LLMModel `json:"model"`
 
 	// minReplicas specify the minimum amount of replicas for a Model deployment. Defaults to 1.
 	// +optional
@@ -59,7 +59,7 @@ type ModelSpec struct {
 // Only one of the following providers may be specified.
 // If none of the following models is specified, the default one
 // is Ollama.
-// +kubebuilder:validation:Enum=Allow;Forbid;Replace
+// +kubebuilder:validation:Enum=Ollama;LlamaCpp;LlamaFile
 type Provider string
 
 const (

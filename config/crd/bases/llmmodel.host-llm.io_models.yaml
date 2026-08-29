@@ -54,7 +54,15 @@ spec:
               model:
                 description: model is the LLM model to be accessed by this inference
                   deployment
-                type: string
+                properties:
+                  name:
+                    type: string
+                  version:
+                    type: string
+                required:
+                - name
+                - version
+                type: object
               provider:
                 default: Ollama
                 description: |-
@@ -64,9 +72,9 @@ spec:
                   - "LlamaCpp": implements LlamaCpp as model manager;
                   - "LlamaFile": implements LlamaFile as model manager.
                 enum:
-                - Allow
-                - Forbid
-                - Replace
+                - Ollama
+                - LlamaCpp
+                - LlamaFile
                 type: string
             required:
             - model

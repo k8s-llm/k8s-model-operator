@@ -54,6 +54,15 @@ var _ = Describe("Model Controller", func() {
 						Name:      resourceName,
 						Namespace: resourceNamespace,
 					},
+					Spec: llmmodelv1alpha1.ModelSpec{
+						Provider:    "Ollama",
+						MinReplicas: 1,
+						MaxReplicas: 1,
+						LLMModel: llmmodelv1alpha1.LLMModel{
+							Name:    "qwen3",
+							Version: "0.6b",
+						},
+					},
 					// TODO(user): Specify other spec details if needed.
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
