@@ -109,6 +109,11 @@ func (in *ModelSpec) DeepCopyInto(out *ModelSpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	out.LLMModel = in.LLMModel
+	if in.TargetNamespace != nil {
+		in, out := &in.TargetNamespace, &out.TargetNamespace
+		*out = new(v1.Namespace)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Tolerations != nil {
 		in, out := &in.Tolerations, &out.Tolerations
 		*out = make([]*v1.Toleration, len(*in))

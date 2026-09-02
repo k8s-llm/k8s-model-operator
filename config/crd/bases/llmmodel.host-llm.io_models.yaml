@@ -1121,7 +1121,6 @@ spec:
                 type: array
             required:
             - model
-            - targetNamespace:omitempty
             type: object
           status:
             description: status defines the observed state of Model

@@ -61,6 +61,7 @@ type ModelSpec struct {
 	Provider Provider `json:"provider"`
 
 	// namespace in which the model will run
+	// +optional
 	TargetNamespace *corev1.Namespace `json:"targetNamespace:omitempty"`
 
 	// tolerations is an array of the usual toleration configuration to be matched with a taint, so pods are run in selected nodes and not running in not compatible ones (i.e. models should be run in GPU enabled nodes)
