@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -31,6 +32,25 @@ type ModelSpec struct {
 	// The following markers will use OpenAPI v3 schema to validate the value
 	// More info: https://book.kubebuilder.io/reference/markers/crd-validation.html
 
+	// If specified, the pod's scheduling constraints
+	// Affinity is a group of affinity scheduling rules.
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
+	// model is the LLM model to be accessed by this inference deployment
+	// +required
+	LLMModel LLMModel `json:"model"`
+
+	// maxReplicas specify the max amount of replicas for a Model deployment. Defaults to 1.
+	// +optional
+	// +kubebuilder:default:=1
+	MaxReplicas int32 `json:"maxReplicas"`
+
+	// minReplicas specify the minimum amount of replicas for a Model deployment. Defaults to 1.
+	// +optional
+	// +kubebuilder:default:=1
+	MinReplicas int32 `json:"minReplicas"`
+
 	// provider specifies what provider will implement inference engine for the model.
 	// Valid values are:
 	// - "Ollama" (default): implements Ollama as model manager;
@@ -40,19 +60,9 @@ type ModelSpec struct {
 	// +kubebuilder:default:=Ollama
 	Provider Provider `json:"provider"`
 
-	// model is the LLM model to be accessed by this inference deployment
-	// +required
-	LLMModel LLMModel `json:"model"`
-
-	// minReplicas specify the minimum amount of replicas for a Model deployment. Defaults to 1.
+	// tolerations is an array of the usual toleration configuration to be matched with a taint, so pods are run in selected nodes and not running in not compatible ones (i.e. models shoudl be run in GPU enabled nodes)
 	// +optional
-	// +kubebuilder:default:=1
-	MinReplicas int32 `json:"minReplicas"`
-
-	// maxReplicas specify the max amount of replicas for a Model deployment. Defaults to 1.
-	// +optional
-	// +kubebuilder:default:=1
-	MaxReplicas int32 `json:"maxReplicas"`
+	Tolerations []*corev1.Toleration `json:"tolerations,omitempty"`
 }
 
 // Provider describes what LLM model manager or provider will be handled by the LLM Model.
