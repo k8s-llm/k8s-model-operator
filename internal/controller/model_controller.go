@@ -36,6 +36,8 @@ type ModelReconciler struct {
 // +kubebuilder:rbac:groups=llmmodel.host-llm.io,resources=models,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=llmmodel.host-llm.io,resources=models/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=llmmodel.host-llm.io,resources=models/finalizers,verbs=update
+// +kubebuilder:rbac:groups=apps,resources=deployment;service,verbs=create;get;list;update;patch;delete
+// +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscaler,verbs=create;get;list;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
