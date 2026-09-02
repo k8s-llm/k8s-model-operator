@@ -60,7 +60,7 @@ type ModelSpec struct {
 	// +kubebuilder:default:=Ollama
 	Provider Provider `json:"provider"`
 
-	// tolerations is an array of the usual toleration configuration to be matched with a taint, so pods are run in selected nodes and not running in not compatible ones (i.e. models shoudl be run in GPU enabled nodes)
+	// tolerations is an array of the usual toleration configuration to be matched with a taint, so pods are run in selected nodes and not running in not compatible ones (i.e. models should be run in GPU enabled nodes)
 	// +optional
 	Tolerations []*corev1.Toleration `json:"tolerations,omitempty"`
 }
