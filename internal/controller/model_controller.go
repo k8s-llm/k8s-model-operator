@@ -46,7 +46,7 @@ const (
 	// typeProgressingModel represents the status used when the Model is being reconciled
 	typeProgressingModel = "Progressing"
 	// typeDegradedModel represents the status used when the Model has encountered an error
-	typeDegradedModel = "Degraded"
+	// typeDegradedModel = "Degraded"
 )
 
 // +kubebuilder:rbac:groups=llmmodel.host-llm.io,resources=models,verbs=get;list;watch;create;update;patch;delete
@@ -127,14 +127,9 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// Ensure the Deployment size is the same as the spec
-	// We only update if the replica count, affinity, or tolerations have changed
-	// Note: We are not updating the container image or other fields in this example.
-	// In a more complete implementation, we would compare the entire spec.
+	// We only update if models, hpa, affinity, or tolerations have changed
+
 	needUpdate := false
-	if *foundDeployment.Spec.Replicas != *desiredDeployment.Spec.Replicas {
-		needUpdate = true
-		log.Info("Deployment replica count is out of sync", "Desired", *desiredDeployment.Spec.Replicas, "Current", *foundDeployment.Spec.Replicas)
-	}
 	if !affinityEqual(foundDeployment.Spec.Template.Spec.Affinity, desiredDeployment.Spec.Template.Spec.Affinity) {
 		needUpdate = true
 		log.Info("Deployment affinity is out of sync")
@@ -143,12 +138,17 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		needUpdate = true
 		log.Info("Deployment tolerations are out of sync")
 	}
+	if foundDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
+		needUpdate = true
+		log.Info("Deployment tolerations are out of sync")
+	}
+
 	if needUpdate {
 		log.Info("Updating Deployment", "Deployment.Namespace", foundDeployment.Namespace, "Deployment.Name", foundDeployment.Name)
-		// We update the replica count, affinity, and tolerations from the desired deployment
-		foundDeployment.Spec.Replicas = desiredDeployment.Spec.Replicas
+		// We update the possibly changed fields
 		foundDeployment.Spec.Template.Spec.Affinity = desiredDeployment.Spec.Template.Spec.Affinity
 		foundDeployment.Spec.Template.Spec.Tolerations = desiredDeployment.Spec.Template.Spec.Tolerations
+		foundDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
 		err = r.Update(ctx, &foundDeployment)
 		if err != nil {
 			log.Error(err, "Failed to update Deployment", "Deployment.Namespace", foundDeployment.Namespace, "Deployment.Name", foundDeployment.Name)

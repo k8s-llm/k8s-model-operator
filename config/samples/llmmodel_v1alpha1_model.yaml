@@ -11,4 +11,5 @@ spec:
     name: qwen3
     version: 0.6b
   maxReplicas: 2
+  targetNamespace: default
   # TODO(user): Add fields here

@@ -3,6 +3,8 @@ package controller
 import (
 	"reflect"
 
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,6 +13,26 @@ import (
 
 	llmmodelv1alpha1 "host-llm.io/k8s-model-operator/api/v1alpha1"
 )
+
+const (
+	imageLatest = "latest"
+)
+
+func imageAndVersion(modelProvider llmmodelv1alpha1.Provider) map[string]string {
+	response := make(map[string]string)
+	switch string(modelProvider) {
+	case string(llmmodelv1alpha1.OllamaProvider):
+		response["image"] = "ollama/ollama"
+		response["version"] = imageLatest
+	case string(llmmodelv1alpha1.LlamaCPPProvider):
+		response["image"] = "llamacpp/ollama"
+		response["version"] = imageLatest
+	case string(llmmodelv1alpha1.LlamaFileProvider):
+		response["image"] = "llamafile/ollama"
+		response["version"] = imageLatest
+	}
+	return (response)
+}
 
 // affinityEqual returns true if the two affinity objects are equal.
 func affinityEqual(a1, a2 *corev1.Affinity) bool {
@@ -48,7 +70,9 @@ func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Mode
 	ls := map[string]string{
 		"app": model.Name,
 	}
+	imageDefinition := imageAndVersion(model.Spec.Provider)
 	replicas := model.Spec.MinReplicas // We use MinReplicas as the replica count for the deployment
+	/* Amount of replicas should depend on hpa, not a fixed number */
 
 	// Convert tolerations from []*corev1.Toleration to []corev1.Toleration
 	var tolerations []corev1.Toleration
@@ -68,7 +92,7 @@ func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Mode
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      model.Name,
-			Namespace: model.Namespace,
+			Namespace: model.Spec.TargetNamespace,
 			Labels:    ls,
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -86,8 +110,21 @@ func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Mode
 					Containers: []corev1.Container{
 						{
 							Name:  "model",
-							Image: "ollama/ollama:latest", // Placeholder image; in a real scenario, this would be derived from the model spec
+							Image: imageDefinition["image"] + "." + imageDefinition["version"],
+							Env: []corev1.EnvVar{
+								{
+									Name:  "OLLAMA_MODELS",
+									Value: "/data/models/ollama",
+								},
+							},
 							// TODO: Add environment variables or command to load the specific model based on model.Spec.LLMModel and model.Spec.Provider
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 11434,
+									Name:          "llamaport",
+									Protocol:      corev1.ProtocolTCP,
+								},
+							},
 						},
 					},
 				},
@@ -96,6 +133,10 @@ func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Mode
 	}
 
 	// Set the Model instance as the owner and controller
-	ctrl.SetControllerReference(model, dep, r.Scheme)
+	err := ctrl.SetControllerReference(model, dep, r.Scheme)
+	if err != nil {
+		log := logf.Log
+		log.Error(err, "Failed to create a deployment reference")
+	}
 	return dep
 }

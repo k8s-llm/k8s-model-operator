@@ -63,6 +63,7 @@ var _ = Describe("Model Controller", func() {
 							Name:    "qwen3",
 							Version: "0.6b",
 						},
+						TargetNamespace: "default",
 					},
 					// TODO(user): Specify other spec details if needed.
 				}
