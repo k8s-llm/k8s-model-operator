@@ -65,6 +65,60 @@ func tolerationsEqual(t1, t2 []corev1.Toleration) bool {
 	return true
 }
 
+// volumeRelatedEqual returns true if volume or path usage is equal between deployments
+func volumeRelatedEqual(d1 *appsv1.Deployment, d2 *appsv1.Deployment) bool {
+	// Evaluates volumes definition
+	if len(d1.Spec.Template.Spec.Volumes) == len(d2.Spec.Template.Spec.Volumes) {
+		for index := range d1.Spec.Template.Spec.Volumes {
+			vol1 := d1.Spec.Template.Spec.Volumes[index]
+			vol2 := d2.Spec.Template.Spec.Volumes[index]
+			resp := vol1.Name == vol2.Name
+			resp = resp && (vol1.PersistentVolumeClaim.ClaimName == vol2.PersistentVolumeClaim.ClaimName)
+			resp = resp && (vol1.PersistentVolumeClaim.ReadOnly == vol2.PersistentVolumeClaim.ReadOnly)
+			if !resp {
+				return resp
+			}
+		}
+	} else {
+		return false
+	}
+	return true
+}
+
+// envarsEqual returns true if env vars for deployments are equal
+func envarsEqual(env1 []corev1.EnvVar, env2 []corev1.EnvVar) bool {
+	if len(env1) == len(env2) {
+		resp := true
+		for index := range env1 {
+			resp = resp && env1[index].Name == env2[index].Name && env1[index].Value == env2[index].Value
+		}
+		if !resp {
+			return resp
+		}
+	} else {
+		return false
+	}
+
+	return true
+}
+
+// volumeMountEqual returns true if containers volume mounts for deployments are equal
+func volumeMountEqual(env1 []corev1.VolumeMount, env2 []corev1.VolumeMount) bool {
+	if len(env1) == len(env2) {
+		resp := true
+		for index := range env1 {
+			resp = resp && env1[index].Name == env2[index].Name && env1[index].MountPath == env2[index].MountPath
+		}
+		if !resp {
+			return resp
+		}
+	} else {
+		return false
+	}
+
+	return true
+}
+
 // desiredDeploymentForModel returns a Deployment object for the Model CR.
 func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Model) *appsv1.Deployment {
 	ls := map[string]string{

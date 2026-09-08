@@ -142,13 +142,27 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		needUpdate = true
 		log.Info("Deployment tolerations are out of sync")
 	}
+	if !volumeRelatedEqual(&foundDeployment, desiredDeployment) {
+		needUpdate = true
+		log.Info("Deployment volume related specs are out of sync")
+	}
+	if !volumeMountEqual(foundDeployment.Spec.Template.Spec.Containers[0].VolumeMounts, desiredDeployment.Spec.Template.Spec.Containers[0].VolumeMounts) {
+		needUpdate = true
+		log.Info("Deployment env vars are out of sync")
+	}
+	if !envarsEqual(foundDeployment.Spec.Template.Spec.Containers[0].Env, desiredDeployment.Spec.Template.Spec.Containers[0].Env) {
+		needUpdate = true
+		log.Info("Deployment env vars are out of sync")
+	}
 
 	if needUpdate {
 		log.Info("Updating Deployment", "Deployment.Namespace", foundDeployment.Namespace, "Deployment.Name", foundDeployment.Name)
 		// We update the possibly changed fields
 		foundDeployment.Spec.Template.Spec.Affinity = desiredDeployment.Spec.Template.Spec.Affinity
 		foundDeployment.Spec.Template.Spec.Tolerations = desiredDeployment.Spec.Template.Spec.Tolerations
-		foundDeployment.Spec.Template.Spec.Containers[0].Image = desiredDeployment.Spec.Template.Spec.Containers[0].Image
+		foundDeployment.Spec.Template.Spec.Containers[0] = desiredDeployment.Spec.Template.Spec.Containers[0]
+		foundDeployment.Spec.Template.Spec.Volumes = desiredDeployment.Spec.Template.Spec.Volumes
+
 		err = r.Update(ctx, &foundDeployment)
 		if err != nil {
 			log.Error(err, "Failed to update Deployment", "Deployment.Namespace", foundDeployment.Namespace, "Deployment.Name", foundDeployment.Name)
