@@ -51,6 +51,14 @@ type ModelSpec struct {
 	// +kubebuilder:default:=1
 	MinReplicas int32 `json:"minReplicas"`
 
+	// is the path where we should look for the model. If not, default is created to be /data/models/modelName
+	// +optional
+	ModelPath string `json:"modelPath,omitempty"`
+
+	// reference to existing PVC where models are stored
+	// +optional
+	PersistentVolumeClaimRef string `json:"persistentVolumeClaimRef,omitempty"`
+
 	// provider specifies what provider will implement inference engine for the model.
 	// Valid values are:
 	// - "Ollama" (default): implements Ollama as model manager;
@@ -62,7 +70,8 @@ type ModelSpec struct {
 
 	// namespace in which the model will run
 	// +optional
-	TargetNamespace string `json:"targetNamespace:omitempty"`
+	// +kubebuilder:default:=default
+	TargetNamespace string `json:"targetNamespace,omitempty"`
 
 	// tolerations is an array of the usual toleration configuration to be matched with a taint, so pods are run in selected nodes and not running in not compatible ones (i.e. models should be run in GPU enabled nodes)
 	// +optional

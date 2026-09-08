@@ -71,6 +71,19 @@ func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Mode
 		"app": model.Name,
 	}
 	imageDefinition := imageAndVersion(model.Spec.Provider)
+	mountPath := model.Spec.ModelPath
+	if mountPath == "" {
+		mountPath = "/var/models/model"
+	}
+	namespace := model.Spec.TargetNamespace
+	if namespace == "" {
+		namespace = "default"
+	}
+	persistentVolumeClaim := model.Spec.PersistentVolumeClaimRef
+	if persistentVolumeClaim == "" {
+		persistentVolumeClaim = "models-pvc"
+	}
+
 	replicas := model.Spec.MinReplicas // We use MinReplicas as the replica count for the deployment
 	/* Amount of replicas should depend on hpa, not a fixed number */
 
@@ -92,7 +105,7 @@ func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Mode
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      model.Name,
-			Namespace: model.Spec.TargetNamespace,
+			Namespace: namespace,
 			Labels:    ls,
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -110,7 +123,7 @@ func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Mode
 					Containers: []corev1.Container{
 						{
 							Name:  "model",
-							Image: imageDefinition["image"] + "." + imageDefinition["version"],
+							Image: imageDefinition["image"] + ":" + imageDefinition["version"],
 							Env: []corev1.EnvVar{
 								{
 									Name:  "OLLAMA_MODELS",
@@ -123,6 +136,23 @@ func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Mode
 									ContainerPort: 11434,
 									Name:          "llamaport",
 									Protocol:      corev1.ProtocolTCP,
+								},
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									MountPath: mountPath,
+									Name:      "models-ro",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "models-ro",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: persistentVolumeClaim,
+									ReadOnly:  true,
 								},
 							},
 						},

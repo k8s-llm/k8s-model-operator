@@ -977,6 +977,13 @@ spec:
                 - name
                 - version
                 type: object
+              modelPath:
+                description: is the path where we should look for the model. If not,
+                  default is created to be /data/models/modelName
+                type: string
+              persistentVolumeClaimRef:
+                description: reference to existing PVC where models are stored
+                type: string
               provider:
                 default: Ollama
                 description: |-
@@ -990,7 +997,8 @@ spec:
                 - LlamaCpp
                 - LlamaFile
                 type: string
-              targetNamespace:omitempty:
+              targetNamespace:
+                default: default
                 description: namespace in which the model will run
                 type: string
               tolerations:
