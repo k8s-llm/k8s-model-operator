@@ -37,9 +37,9 @@ type ModelSpec struct {
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 
-	// model is the LLM model to be accessed by this inference deployment
+	// LLMModel is the LLM model to be accessed by this inference deployment
 	// +required
-	LLMModel LLMModel `json:"model"`
+	LLMModel LLMModel `json:"llmModel"`
 
 	// maxReplicas specify the max amount of replicas for a Model deployment. Defaults to 1.
 	// +optional
@@ -50,6 +50,19 @@ type ModelSpec struct {
 	// +optional
 	// +kubebuilder:default:=1
 	MinReplicas int32 `json:"minReplicas"`
+
+	// modelPath is the path where we should look for the particular model, inside MountPath. If not, default is created to <model.name>-<model.version>
+	// +optional
+	ModelPath string `json:"modelPath,omitempty"`
+
+	// mountPath is the base path where we should look for the model. If not, default is /data/models/ (where common models volume is to be accessed)
+	// +optional
+	// +kubebuilder:default:=/data/models
+	MountPath string `json:"mountPath,omitempty"`
+
+	// reference to existing PVC where models are stored
+	// +optional
+	PersistentVolumeClaimRef string `json:"persistentVolumeClaimRef,omitempty"`
 
 	// provider specifies what provider will implement inference engine for the model.
 	// Valid values are:
@@ -62,7 +75,8 @@ type ModelSpec struct {
 
 	// namespace in which the model will run
 	// +optional
-	TargetNamespace *corev1.Namespace `json:"targetNamespace:omitempty"`
+	// +kubebuilder:default:=default
+	TargetNamespace string `json:"targetNamespace,omitempty"`
 
 	// tolerations is an array of the usual toleration configuration to be matched with a taint, so pods are run in selected nodes and not running in not compatible ones (i.e. models should be run in GPU enabled nodes)
 	// +optional

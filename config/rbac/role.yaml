@@ -7,8 +7,7 @@ rules:
 - apiGroups:
   - apps
   resources:
-  - deployment
-  - service
+  - deployments
   verbs:
   - create
   - delete
@@ -16,6 +15,7 @@ rules:
   - list
   - patch
   - update
+  - watch
 - apiGroups:
   - autoscaling
   resources:

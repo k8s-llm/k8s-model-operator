@@ -5,10 +5,16 @@ metadata:
     app.kubernetes.io/name: k8s-model-operator
     app.kubernetes.io/managed-by: kustomize
   name: model-sample
+  namespace: default
 spec:
   provider: Ollama
-  model:
+  llmModel:
     name: qwen3
     version: 0.6b
   maxReplicas: 2
+  minReplicas: 1
+  targetNamespace: default
+  persistentVolumeClaimRef: models-pvc
+  mountPath: /data/models
+  modelPath: qwen3-0.0b
   # TODO(user): Add fields here
