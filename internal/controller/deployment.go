@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"cmp"
 	"reflect"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -125,18 +126,10 @@ func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Mode
 		"app": model.Name,
 	}
 	imageDefinition := imageAndVersion(model.Spec.Provider)
-	mountPath := model.Spec.ModelPath
-	if mountPath == "" {
-		mountPath = "/var/models/model"
-	}
-	namespace := model.Spec.TargetNamespace
-	if namespace == "" {
-		namespace = "default"
-	}
-	persistentVolumeClaim := model.Spec.PersistentVolumeClaimRef
-	if persistentVolumeClaim == "" {
-		persistentVolumeClaim = "models-pvc"
-	}
+	mountPath := cmp.Or(model.Spec.MountPath, "/data/models")
+	modelPath := cmp.Or(model.Spec.ModelPath, model.Spec.LLMModel.Name+"-"+model.Spec.LLMModel.Version)
+	namespace := cmp.Or(model.Spec.TargetNamespace, "default")
+	persistentVolumeClaim := cmp.Or(model.Spec.PersistentVolumeClaimRef, "models-pvc")
 
 	replicas := model.Spec.MinReplicas // We use MinReplicas as the replica count for the deployment
 	/* Amount of replicas should depend on hpa, not a fixed number */
@@ -181,7 +174,7 @@ func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Mode
 							Env: []corev1.EnvVar{
 								{
 									Name:  "OLLAMA_MODELS",
-									Value: "/data/models/ollama",
+									Value: mountPath + "/" + modelPath,
 								},
 							},
 							// TODO: Add environment variables or command to load the specific model based on model.Spec.LLMModel and model.Spec.Provider
