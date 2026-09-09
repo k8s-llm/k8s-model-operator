@@ -1,9 +1,64 @@
 # k8s-model-operator
-// TODO(user): Add simple overview of use/purpose
+
+Model operator will control synchronziations between Model kind and k8s resources needed to maintain it.
+
+Model kind is a definition that will choose a model and a inference manager to be implemented in a k8s clusters in pursue of a self owned AI infrastructure.
+
+Creation of this project is based on kubebuilder.
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
 
+Model definition should be kept simple, to let different resources of the kind to read models from centralized volumes.
+
+Current definition covers i.e. this example:
+
+```bash
+apiVersion: llmmodel.host-llm.io/v1alpha1
+kind: Model
+metadata:
+  labels:
+    app.kubernetes.io/name: k8s-model-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: model-sample
+  namespace: default
+spec:
+  provider: Ollama
+  llmModel:
+    name: qwen3
+    version: 0.6b
+  maxReplicas: 2
+  minReplicas: 1
+  targetNamespace: default
+  persistentVolumeClaimRef: models-pvc
+  mountPath: /data/models
+  modelPath: qwen3-0.0b
+```
+
+The deinition chooses an `Ollama` provider/manager, using `qwen3:06b` model stored at a volume reachable by PersistentVolueClaim `models-pvc` and will be accesible by Ollama pods in `/data/models/qweb3-0.0b` path
+
+## Easy install steps
+
+Clone this repo and run:
+
+`make lint && make manifests && make build && make test && make build-installer`
+
+if you use a local kind cluster, you can disponibilize the image by running:
+
+`docker build -t k8s-model-operator:latest . && kind load docker-image k8s-model-operator:latest --name k8s-models`
+
+Then run `kubectl apply -f dist/install.yaml`
+
+Please check that the image name is the one used by the controller
+
+--- 
+## TO DO
+
+* We need to make the docker image available
+* Create HPA and Service resources when synchronizing models
+* Include correct images for llama.cpp and lamafiles
+
+--- 
+# KubeBuilder documentation
 ## Getting Started
 
 ### Prerequisites
