@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -108,6 +109,7 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// Define the desired Deployment object
 	desiredDeployment := r.desiredDeploymentForModel(&model)
+	desiredService := r.desiredServiceForModel(&model)
 
 	// Check if the Deployment already exists
 	var foundDeployment appsv1.Deployment
@@ -172,6 +174,42 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{Requeue: true}, nil
 	}
 
+	// Search for service
+	var foundService corev1.Service
+	err = r.Get(ctx, types.NamespacedName{Name: desiredService.Name, Namespace: desiredService.Namespace}, &foundService)
+	if err != nil && apierrors.IsNotFound(err) {
+		log.Info("Creating a new Service", "Service.Namespace", desiredService.Namespace, "Service.Name", desiredService.Name)
+		err = r.Create(ctx, desiredDeployment)
+		if err != nil {
+			log.Error(err, "Failed to create new Service", "Service.Namespace", desiredService.Namespace, "Service.Name", desiredService.Name)
+			return ctrl.Result{}, err
+		}
+		// Service created successfully - return and requeue
+		return ctrl.Result{Requeue: true}, nil
+	} else if err != nil {
+		log.Error(err, "Failed to get Service")
+		return ctrl.Result{}, err
+	}
+
+	needServiceUpdate := false
+	if !serviceEqual(&foundService, desiredService) {
+		needServiceUpdate = true
+		log.Info("Deployment affinity is out of sync")
+	}
+
+	if needServiceUpdate {
+		log.Info("Updating Service", "Service.Namespace", foundService.Namespace, "Service.Name", foundService.Name)
+		// We update the possibly changed fields
+		foundService.Spec.Selector = desiredService.Spec.Selector
+
+		err = r.Update(ctx, &foundService)
+		if err != nil {
+			log.Error(err, "Failed to update Service", "Service.Namespace", foundService.Namespace, "Service.Name", foundService.Name)
+			return ctrl.Result{}, err
+		}
+		// Spec updated - return and requeue
+		return ctrl.Result{Requeue: true}, nil
+	}
 	// Update the Model status based on the Deployment status
 	// We assume the Deployment is available if it has at least one ready replica equal to the desired replicas
 	if *foundDeployment.Spec.Replicas == foundDeployment.Status.ReadyReplicas {
