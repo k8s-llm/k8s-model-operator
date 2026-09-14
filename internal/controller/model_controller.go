@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -110,6 +111,7 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// Define the desired Deployment object
 	desiredDeployment := r.desiredDeploymentForModel(&model)
 	desiredService := r.desiredServiceForModel(&model)
+	desiredHpa := r.desiredHPAForModel(&model)
 
 	// Check if the Deployment already exists
 	var foundDeployment appsv1.Deployment
@@ -175,41 +177,17 @@ func (r *ModelReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// Search for service
-	var foundService corev1.Service
-	err = r.Get(ctx, types.NamespacedName{Name: desiredService.Name, Namespace: desiredService.Namespace}, &foundService)
-	if err != nil && apierrors.IsNotFound(err) {
-		log.Info("Creating a new Service", "Service.Namespace", desiredService.Namespace, "Service.Name", desiredService.Name)
-		err = r.Create(ctx, desiredDeployment)
-		if err != nil {
-			log.Error(err, "Failed to create new Service", "Service.Namespace", desiredService.Namespace, "Service.Name", desiredService.Name)
-			return ctrl.Result{}, err
-		}
-		// Service created successfully - return and requeue
-		return ctrl.Result{Requeue: true}, nil
-	} else if err != nil {
-		log.Error(err, "Failed to get Service")
-		return ctrl.Result{}, err
-	}
-
-	needServiceUpdate := false
-	if !serviceEqual(&foundService, desiredService) {
-		needServiceUpdate = true
-		log.Info("Deployment affinity is out of sync")
-	}
-
-	if needServiceUpdate {
-		log.Info("Updating Service", "Service.Namespace", foundService.Namespace, "Service.Name", foundService.Name)
-		// We update the possibly changed fields
-		foundService.Spec.Selector = desiredService.Spec.Selector
-
-		err = r.Update(ctx, &foundService)
-		if err != nil {
-			log.Error(err, "Failed to update Service", "Service.Namespace", foundService.Namespace, "Service.Name", foundService.Name)
-			return ctrl.Result{}, err
-		}
-		// Spec updated - return and requeue
+	err = r.ReconcileService(ctx, desiredService)
+	if err != nil {
 		return ctrl.Result{Requeue: true}, nil
 	}
+
+	// Search for hpa
+	err = r.ReconcileHpa(ctx, desiredHpa)
+	if err != nil {
+		return ctrl.Result{Requeue: true}, nil
+	}
+
 	// Update the Model status based on the Deployment status
 	// We assume the Deployment is available if it has at least one ready replica equal to the desired replicas
 	if *foundDeployment.Spec.Replicas == foundDeployment.Status.ReadyReplicas {
@@ -251,4 +229,88 @@ func (r *ModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}).
 		Named("model").
 		Complete(r)
+}
+
+func (r *ModelReconciler) ReconcileHpa(ctx context.Context, desiredHpa *autoscalingv2.HorizontalPodAutoscaler) error {
+	var foundHpa autoscalingv2.HorizontalPodAutoscaler
+	log := logf.FromContext(ctx)
+	err := r.Get(ctx, types.NamespacedName{Name: desiredHpa.Name, Namespace: desiredHpa.Namespace}, &foundHpa)
+	if err != nil && apierrors.IsNotFound(err) {
+		log.Info("Creating a new HorizontalPodAutoscaler", "Hpa.Namespace", desiredHpa.Namespace, "Hpa.Name", desiredHpa.Name)
+		err = r.Create(ctx, desiredHpa)
+		if err != nil {
+			log.Error(err, "Failed to create new HorizontalPodAutoscaler", "Hpa.Namespace", desiredHpa.Namespace, "Hpa.Name", desiredHpa.Name)
+			return err
+		}
+		// Service created successfully - return and requeue
+		return nil
+	} else if err != nil {
+		log.Error(err, "Failed to get Hpa")
+		return err
+	}
+
+	needHpaUpdate := false
+	if !hpaEqual(&foundHpa, desiredHpa) {
+		needHpaUpdate = true
+		log.Info("Deployment Hpa is out of sync")
+	}
+
+	if needHpaUpdate {
+		log.Info("Updating Hpa", "Hpa.Namespace", foundHpa.Namespace, "Hpa.Name", foundHpa.Name)
+		// We update the possibly changed fields
+		foundHpa.Spec.MinReplicas = desiredHpa.Spec.MinReplicas
+		foundHpa.Spec.MaxReplicas = desiredHpa.Spec.MaxReplicas
+
+		err = r.Update(ctx, &foundHpa)
+		if err != nil {
+			log.Error(err, "Failed to update Hpa", "Hpa.Namespace", foundHpa.Namespace, "Hpa.Name", foundHpa.Name)
+			return err
+		}
+		// Spec updated - return and requeue
+		return nil
+	}
+
+	return (nil)
+}
+
+func (r *ModelReconciler) ReconcileService(ctx context.Context, desiredService *corev1.Service) error {
+	// Search for service
+	var foundService corev1.Service
+	log := logf.FromContext(ctx)
+	err := r.Get(ctx, types.NamespacedName{Name: desiredService.Name, Namespace: desiredService.Namespace}, &foundService)
+	if err != nil && apierrors.IsNotFound(err) {
+		log.Info("Creating a new Service", "Service.Namespace", desiredService.Namespace, "Service.Name", desiredService.Name)
+		err = r.Create(ctx, desiredService)
+		if err != nil {
+			log.Error(err, "Failed to create new Service", "Service.Namespace", desiredService.Namespace, "Service.Name", desiredService.Name)
+			return err
+		}
+		// Service created successfully - return and requeue
+		return nil
+	} else if err != nil {
+		log.Error(err, "Failed to get Service")
+		return err
+	}
+
+	needServiceUpdate := false
+	if !serviceEqual(&foundService, desiredService) {
+		needServiceUpdate = true
+		log.Info("Deployment Service is out of sync")
+	}
+
+	if needServiceUpdate {
+		log.Info("Updating Service", "Service.Namespace", foundService.Namespace, "Service.Name", foundService.Name)
+		// We update the possibly changed fields
+		foundService.Spec.Selector = desiredService.Spec.Selector
+
+		err := r.Update(ctx, &foundService)
+		if err != nil {
+			log.Error(err, "Failed to update Service", "Service.Namespace", foundService.Namespace, "Service.Name", foundService.Name)
+			return err
+		}
+		// Spec updated - return and requeue
+		return nil
+	}
+
+	return (nil)
 }

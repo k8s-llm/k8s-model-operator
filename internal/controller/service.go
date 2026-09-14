@@ -21,9 +21,7 @@ func serviceEqual(svc1 *corev1.Service, svc2 *corev1.Service) bool {
 
 // desiredServiceForModel returns a Service object for the Model CR.
 func (r *ModelReconciler) desiredServiceForModel(model *llmmodelv1alpha1.Model) *corev1.Service {
-	ls := map[string]string{
-		"app": model.Name,
-	}
+	ls := r.desiredLabelSelector(model)
 	namespace := cmp.Or(model.Spec.TargetNamespace, "default")
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
