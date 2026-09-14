@@ -52,6 +52,7 @@ func (r *ModelReconciler) desiredHPAForModel(model *llmmodelv1alpha1.Model) *aut
 							Type:               autoscalingv2.UtilizationMetricType,
 						},
 					},
+					Type: "Resource",
 				},
 			},
 		},

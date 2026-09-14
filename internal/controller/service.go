@@ -32,9 +32,10 @@ func (r *ModelReconciler) desiredServiceForModel(model *llmmodelv1alpha1.Model) 
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
-					Name:       "ollamaPort",
+					Name:       "ollama",
 					Protocol:   "TCP",
 					TargetPort: intstr.FromInt32(11434),
+					Port:       11434,
 				},
 			},
 			Selector: ls,
