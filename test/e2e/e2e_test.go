@@ -45,6 +45,10 @@ const metricsServiceName = "k8s-model-operator-controller-manager-metrics-servic
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
 const metricsRoleBindingName = "k8s-model-operator-metrics-binding"
 
+const modelName = "model-sample"
+
+const modelNamespace = "test-models"
+
 var _ = Describe("Manager", Ordered, func() {
 	var controllerPodName string
 
@@ -62,6 +66,11 @@ var _ = Describe("Manager", Ordered, func() {
 			"pod-security.kubernetes.io/enforce=restricted")
 		_, err = utils.Run(cmd)
 		Expect(err).NotTo(HaveOccurred(), "Failed to label namespace with restricted policy")
+
+		By("creating model namespace")
+		cmd = exec.Command("kubectl", "create", "ns", modelNamespace)
+		_, err = utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create namespace "+modelNamespace)
 
 		By("installing CRDs")
 		cmd = exec.Command("make", "install")
@@ -91,6 +100,10 @@ var _ = Describe("Manager", Ordered, func() {
 
 		By("removing manager namespace")
 		cmd = exec.Command("kubectl", "delete", "ns", namespace)
+		_, _ = utils.Run(cmd)
+
+		By("removing model namespace")
+		cmd = exec.Command("kubectl", "delete", "ns", modelNamespace)
 		_, _ = utils.Run(cmd)
 	})
 
@@ -279,6 +292,57 @@ var _ = Describe("Manager", Ordered, func() {
 		//    fmt.Sprintf(`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
 		//    strings.ToLower(<Kind>),
 		// ))
+	})
+
+	Context("Manager", func() {
+		It("should ensure the deployment, service and hpa are created", func() {
+
+			By("deploying model resource model1.yaml")
+			cmd := exec.Command("kubectl", "apply", "-n", modelNamespace, "-f", "test/e2e/model1.yaml")
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to deploy the custom resource Model - model1.yaml")
+
+			By("validating deployment exists")
+			verifyModelDeploymentAvailable := func(g Gomega) {
+				cmd = exec.Command("kubectl", "get", "deployment", modelName, "-n", modelNamespace,
+					"-o", "jsonpath={.status.conditions[?(@.type=='Available')].status}")
+
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).To(Equal("True"), "Model deployment not ready")
+			}
+			Eventually(verifyModelDeploymentAvailable, 3*time.Minute, time.Second).Should(Succeed())
+
+			By("validating model service is available")
+			cmd = exec.Command("kubectl", "get", "service", modelName, "-n", modelNamespace,
+				"-o", "jsonpath={.metadata.name}")
+			output, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Model service should exist")
+			Expect(output).To(Equal("ollama-qwen-model"), "Model service does not exist")
+
+			By("validating model hpa is available")
+			cmd = exec.Command("kubectl", "get", "hpa", modelName, "-n", modelNamespace,
+				"-o", "jsonpath={.metadata.name}")
+			output, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Model hpa should exist")
+			Expect(output).To(Equal("ollama-qwen-model"), "Model hpa does not exist")
+
+			By("validating model hpa min and max replicas equals model definition")
+			cmd = exec.Command("kubectl", "get", "model", modelName, "-n", modelNamespace, "-o", "jsonpath={.spec.minReplicas}")
+			minOriginal, err := utils.Run(cmd)
+			cmd = exec.Command("kubectl", "get", "model", modelName, "-n", modelNamespace, "-o", "jsonpath={.spec.maxReplicas}")
+			maxOriginal, err := utils.Run(cmd)
+
+			cmd = exec.Command("kubectl", "get", "hpa", modelName, "-n", modelNamespace, "-o", "jsonpath={.spec.minReplicas}")
+			minHpa, err := utils.Run(cmd)
+			cmd = exec.Command("kubectl", "get", "hpa", modelName, "-n", modelNamespace, "-o", "jsonpath={.spec.maxReplicas}")
+			maxHpa, err := utils.Run(cmd)
+
+			Expect(err).NotTo(HaveOccurred(), "Model hpa should exist")
+			Expect(minHpa).To(Equal(minOriginal), "hpa minReplicas does not equals model minReplicas")
+			Expect(maxHpa).To(Equal(maxOriginal), "hpa minReplicas does not equals model minReplicas")
+		})
+
 	})
 })
 
