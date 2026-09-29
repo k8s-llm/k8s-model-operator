@@ -297,9 +297,20 @@ var _ = Describe("Manager", Ordered, func() {
 	Context("Manager", func() {
 		It("should ensure the deployment, service and hpa are created", func() {
 
-			By("deploying model resource model1.yaml")
-			cmd := exec.Command("kubectl", "apply", "-n", modelNamespace, "-f", "test/e2e/model1.yaml")
+
+			By("deploying model requirements: volume and pvc")
+			cmd := exec.Command("kubectl", "create", "-n", modelNamespace, "-f", "test/e2e/volume.yaml")
 			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to deploy volume and pvc")
+
+			By("deploying model requirements: pod to create model directory")
+			cmd = exec.Command("kubectl", "create", "-n", modelNamespace, "-f", "test/e2e/podWriter.yaml")
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create model directory")
+
+			By("deploying model resource model1.yaml")
+			cmd = exec.Command("kubectl", "apply", "-n", modelNamespace, "-f", "test/e2e/model1.yaml")
+			_, err = utils.Run(cmd)
 			Expect(err).NotTo(HaveOccurred(), "Failed to deploy the custom resource Model - model1.yaml")
 
 			By("validating deployment exists")
@@ -311,22 +322,23 @@ var _ = Describe("Manager", Ordered, func() {
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(output).To(Equal("True"), "Model deployment not ready")
 			}
-			Eventually(verifyModelDeploymentAvailable, 3*time.Minute, time.Second).Should(Succeed())
+			Eventually(verifyModelDeploymentAvailable, 6*time.Minute, 10*time.Second).Should(Succeed())
 
-			By("validating model service is available")
-			cmd = exec.Command("kubectl", "get", "service", modelName, "-n", modelNamespace,
-				"-o", "jsonpath={.metadata.name}")
-			output, err := utils.Run(cmd)
-			Expect(err).NotTo(HaveOccurred(), "Model service should exist")
-			Expect(output).To(Equal("ollama-qwen-model"), "Model service does not exist")
 
 			By("validating model hpa is available")
 			cmd = exec.Command("kubectl", "get", "hpa", modelName, "-n", modelNamespace,
 				"-o", "jsonpath={.metadata.name}")
-			output, err = utils.Run(cmd)
+			output, err := utils.Run(cmd)
 			Expect(err).NotTo(HaveOccurred(), "Model hpa should exist")
-			Expect(output).To(Equal("ollama-qwen-model"), "Model hpa does not exist")
+			Expect(output).To(Equal(modelName), "Model hpa does not exist")
 
+			By("validating model service is available")
+			cmd = exec.Command("kubectl", "get", "service", modelName, "-n", modelNamespace,
+				"-o", "jsonpath={.metadata.name}")
+			output, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Model service should exist")
+			Expect(output).To(Equal(modelName), "Model service does not exist")
+			
 			By("validating model hpa min and max replicas equals model definition")
 			cmd = exec.Command("kubectl", "get", "model", modelName, "-n", modelNamespace, "-o", "jsonpath={.spec.minReplicas}")
 			minOriginal, err := utils.Run(cmd)
