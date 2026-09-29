@@ -122,9 +122,7 @@ func volumeMountEqual(env1 []corev1.VolumeMount, env2 []corev1.VolumeMount) bool
 
 // desiredDeploymentForModel returns a Deployment object for the Model CR.
 func (r *ModelReconciler) desiredDeploymentForModel(model *llmmodelv1alpha1.Model) *appsv1.Deployment {
-	ls := map[string]string{
-		"app": model.Name,
-	}
+	ls := r.desiredLabelSelector(model)
 	imageDefinition := imageAndVersion(model.Spec.Provider)
 	mountPath := cmp.Or(model.Spec.MountPath, "/data/models")
 	modelPath := cmp.Or(model.Spec.ModelPath, model.Spec.LLMModel.Name+"-"+model.Spec.LLMModel.Version)

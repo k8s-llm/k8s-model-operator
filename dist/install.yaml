@@ -1198,6 +1198,18 @@ metadata:
   name: k8s-model-operator-manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - apps
   resources:
   - deployments
@@ -1212,7 +1224,7 @@ rules:
 - apiGroups:
   - autoscaling
   resources:
-  - horizontalpodautoscaler
+  - '*'
   verbs:
   - create
   - delete
@@ -1220,6 +1232,7 @@ rules:
   - list
   - patch
   - update
+  - watch
 - apiGroups:
   - llmmodel.host-llm.io
   resources:

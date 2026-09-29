@@ -1,0 +1,17 @@
+---
+apiVersion: llmmodel.host-llm.io/v1alpha1
+kind: Model
+metadata:
+  name: model-sample
+spec:
+  provider: Ollama
+  llmModel:
+    name: qwen3
+    version: 0.6b
+  maxReplicas: 2
+  minReplicas: 1
+  targetNamespace: test-models
+  persistentVolumeClaimRef: models-pvc2
+  mountPath: /data/models
+  modelPath: qwen3-0.6b
+
