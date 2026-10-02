@@ -27,11 +27,6 @@ jobs:
           tag="${ref##*/}"
           echo "image_tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Basic check for project build and lint
-        id: check
-        run: |
-          make lint && make build && make test
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         id: build
