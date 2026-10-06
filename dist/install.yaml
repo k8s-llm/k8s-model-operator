@@ -1454,7 +1454,7 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: k8s-model-operator:latest
+        image: ghcr.io/k8s-llm/k8s-model-operator:latest
         livenessProbe:
           httpGet:
             path: /healthz
